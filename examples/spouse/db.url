@@ -1,1 +1,1 @@
-postgresql://localhost/deepdive_spouse_$USER
+postgresql://localhost/deepdive_spouse_ubuntu
