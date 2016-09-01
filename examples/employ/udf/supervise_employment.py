@@ -56,6 +56,7 @@ def supervise(
 
     # # Rule: Candidates that have a third person in between
     # if 'PERSON' in intermediate_ner_tags:
+    #    # if 'ORGANIZATION' in intermediate_ner_tags:
     #     yield spouse._replace(label=-1, type='neg:third_person_between')
 
     # # Rule: Sentences that contain wife/husband in between

@@ -3,7 +3,7 @@
 # This application's goal is to predict whether a given pair of person mention
 # are indicating a spouse relationship or not.
 @extraction
-has_spouse?(
+work_for?(
     @key
     @references(relation="person_mention", column="mention_id", alias="p1")
     p1_id text,
@@ -116,10 +116,10 @@ spouse_candidate(p1, p1_name, p2, p2_name) :-
 @extraction
 spouse_feature(
     @key
-    @references(relation="has_spouse", column="p1_id", alias="has_spouse")
+    @references(relation="work_for", column="p1_id", alias="work_for")
     p1_id text,
     @key
-    @references(relation="has_spouse", column="p2_id", alias="has_spouse")
+    @references(relation="work_for", column="p2_id", alias="work_for")
     p2_id text,
     @key
     feature text
@@ -156,10 +156,10 @@ spouse_feature += extract_spouse_features(
 @extraction
 spouse_label(
     @key
-    @references(relation="has_spouse", column="p1_id", alias="has_spouse")
+    @references(relation="work_for", column="p1_id", alias="work_for")
     p1_id text,
     @key
-    @references(relation="has_spouse", column="p2_id", alias="has_spouse")
+    @references(relation="work_for", column="p2_id", alias="work_for")
     p2_id text,
     @navigable
     label int,
@@ -193,7 +193,8 @@ function supervise over (
     ) returns (
         p1_id text, p2_id text, label int, rule_id text
     )
-    implementation "udf/supervise_spouse.py" handles tsv lines.
+    # implementation "udf/supervise_spouse.py" handles tsv lines.
+    implementation "udf/supervise_employment.py" handles tsv lines.
 
 spouse_label += supervise(
     p1_id, p1_begin, p1_end,
@@ -213,7 +214,7 @@ spouse_label += supervise(
 spouse_label_resolved(p1_id, p2_id, SUM(vote)) :- spouse_label(p1_id, p2_id, vote, rule_id).
 
 # assign the resolved labels for the spouse relation
-has_spouse(p1_id, p2_id) = if l > 0 then TRUE
+work_for(p1_id, p2_id) = if l > 0 then TRUE
                       else if l < 0 then FALSE
                       else NULL end :- spouse_label_resolved(p1_id, p2_id, l).
 
@@ -223,17 +224,17 @@ has_spouse(p1_id, p2_id) = if l > 0 then TRUE
 
 # Features
 @weight(f)
-has_spouse(p1_id, p2_id) :-
+work_for(p1_id, p2_id) :-
     spouse_candidate(p1_id, _, p2_id, _),
     spouse_feature(p1_id, p2_id, f).
-
+ 
 # Inference rule: Symmetry
 @weight(3.0)
-has_spouse(p1_id, p2_id) => has_spouse(p2_id, p1_id) :-
+work_for(p1_id, p2_id) => work_for(p2_id, p1_id) :-
     spouse_candidate(p1_id, _, p2_id, _).
 
 # Inference rule: Only one marriage
 @weight(-1.0)
-has_spouse(p1_id, p2_id) => has_spouse(p1_id, p3_id) :-
+work_for(p1_id, p2_id) => work_for(p1_id, p3_id) :-
     spouse_candidate(p1_id, _, p2_id, _),
     spouse_candidate(p1_id, _, p3_id, _).
