@@ -22,15 +22,15 @@ def supervise(
     ):
 
     # Constants
-    MARRIED = frozenset(["wife", "husband"])
-    FAMILY = frozenset(["mother", "father", "sister", "brother", "brother-in-law"])
+    # MARRIED = frozenset(["wife", "husband"])
+    # FAMILY = frozenset(["mother", "father", "sister", "brother", "brother-in-law"])
 
     SUPER = frozenset(["boss", "supervisor", "manager"])
     CO = frozenset(["colleague","coworker"])
     SUB = frozenset(["subordinate", "staff"])
 
 
-    MAX_DIST = 10
+    MAX_DIST = 15
 
     # Common data objects
     p1_end_idx = min(p1_end, p2_end)
@@ -42,11 +42,17 @@ def supervise(
     employment = WorkLabel(p1_id=p1_id, p2_id=p2_id, label=None, type=None)
 
     ''' CUSTOM RULES '''
-    if len(SUPER.intersection(intermediate_lemmas)) > 0 or len(CO.intersection(intermediate_lemmas)) > 0 or len(SUB.intersection(intermediate_lemmas)) > 0:
-        yield employment._replace(label=1, type='pos:boss_or_colleague_or_subordinate')
+    if len(SUPER.intersection(intermediate_lemmas)) > 0 or len(SUB.intersection(intermediate_lemmas)) > 0:
+        yield employment._replace(label=1, type='pos:boss_and_subordinate')
+
+    if len(CO.intersection(intermediate_lemmas)) > 0 :
+        yield employment._replace(label=1, type='pos:colleagues')    
 
     if ("and" in intermediate_lemmas) and ("work" in tail_lemmas):
         yield employment._replace(label=1, type='pos:work_together')
+
+    if len(intermediate_lemmas) > MAX_DIST:
+        yield employment._replace(label=-1, type='neg:far_apart')
 
 
     # ''' FROM SPOUSE EXAMPLE '''
