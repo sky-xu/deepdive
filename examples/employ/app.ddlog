@@ -233,8 +233,14 @@ work_for(p1_id, p2_id) :-
 work_for(p1_id, p2_id) => work_for(p2_id, p1_id) :-
     spouse_candidate(p1_id, _, p2_id, _).
 
+# Inference rule: Transitive
+@weight(1.0)
+work_for(p1_id, p2_id) => work_for(p2_id, p3_id) :-
+   spouse_candidate(p1_id, _, p2_id, _),
+   spouse_candidate(p1_id, _, p3_id, _).
+
 # Inference rule: Only one marriage
-@weight(-1.0)
-work_for(p1_id, p2_id) => work_for(p1_id, p3_id) :-
-    spouse_candidate(p1_id, _, p2_id, _),
-    spouse_candidate(p1_id, _, p3_id, _).
+# @weight(-1.0)
+# work_for(p1_id, p2_id) => work_for(p1_id, p3_id) :-
+#    spouse_candidate(p1_id, _, p2_id, _),
+#    spouse_candidate(p1_id, _, p3_id, _).
