@@ -39,6 +39,7 @@ def supervise(
     intermediate_lemmas = lemmas[p1_end_idx+1:p2_start_idx]
     intermediate_ner_tags = ner_tags[p1_end_idx+1:p2_start_idx]
     tail_lemmas = lemmas[p2_end_idx+1:]
+    tail_ner_tags = ner_tags[p2_end_idx+1:]
     employment = WorkLabel(p1_id=p1_id, p2_id=p2_id, label=None, type=None)
 
     ''' CUSTOM RULES '''
@@ -53,6 +54,9 @@ def supervise(
 
     if len(intermediate_lemmas) > MAX_DIST:
         yield employment._replace(label=-1, type='neg:far_apart')
+
+    if 'ORGANIZATION' in intermediate_ner_tags and 'ORGANIZATION' in tail_lemmas: 
+        yield employment._replace(label=-1, type='neg:from_different_orgs')
 
 
     # ''' FROM SPOUSE EXAMPLE '''
