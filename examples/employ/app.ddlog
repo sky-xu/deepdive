@@ -1,7 +1,7 @@
 ## Random variable to predict #################################################
 
 # This application's goal is to predict whether a given pair of person mention
-# are indicating a spouse relationship or not.
+# are indicating a coworker relationship or not.
 @extraction
 work_for?(
     @key
@@ -23,8 +23,9 @@ articles(
     content text
 ).
 
+
 @source
-spouses_dbpedia(
+coworker_dbpedia(
     @key
     person1_name text,
     @key
@@ -90,7 +91,7 @@ person_mention += map_person_mention(
     doc_id, sentence_index, tokens, ner_tags
 ) :- sentences(doc_id, sentence_index, _, tokens, _, _, ner_tags, _, _, _).
 
-spouse_candidate(
+coworker_candidate(
     p1_id text,
     p1_name text,
     p2_id text,
@@ -100,7 +101,7 @@ spouse_candidate(
 num_people(doc_id, sentence_index, COUNT(p)) :-
     person_mention(p, _, doc_id, sentence_index, _, _).
 
-spouse_candidate(p1, p1_name, p2, p2_name) :-
+coworker_candidate(p1, p1_name, p2, p2_name) :-
     num_people(same_doc, same_sentence, num_p),
     person_mention(p1, p1_name, same_doc, same_sentence, p1_begin, _),
     person_mention(p2, p2_name, same_doc, same_sentence, p2_begin, _),
@@ -114,7 +115,7 @@ spouse_candidate(p1, p1_name, p2, p2_name) :-
 
 # Feature extraction (using DDLIB via a UDF) at the relation level
 @extraction
-spouse_feature(
+coworker_feature(
     @key
     @references(relation="work_for", column="p1_id", alias="work_for")
     p1_id text,
@@ -125,7 +126,7 @@ spouse_feature(
     feature text
 ).
 
-function extract_spouse_features over (
+function extract_coworker_features over (
         p1_id text,
         p2_id text,
         p1_begin_index int,
@@ -140,10 +141,10 @@ function extract_spouse_features over (
         ner_tags text[],
         dep_types text[],
         dep_tokens int[]
-    ) returns rows like spouse_feature
-    implementation "udf/extract_spouse_features.py" handles tsv lines.
+    ) returns rows like coworker_feature
+    implementation "udf/extract_coworker_features.py" handles tsv lines.
 
-spouse_feature += extract_spouse_features(
+coworker_feature += extract_coworker_features(
     p1_id, p2_id, p1_begin_index, p1_end_index, p2_begin_index, p2_end_index,
     doc_id, sent_index, tokens, lemmas, pos_tags, ner_tags, dep_types, dep_tokens
 ) :-
@@ -154,7 +155,7 @@ spouse_feature += extract_spouse_features(
 
 ## Distant Supervision ########################################################
 @extraction
-spouse_label(
+coworker_label(
     @key
     @references(relation="work_for", column="p1_id", alias="work_for")
     p1_id text,
@@ -167,15 +168,17 @@ spouse_label(
     rule_id text
 ).
 
-# make sure all pairs in spouse_candidate are considered as unsupervised examples
-spouse_label(p1,p2, 0, NULL) :- spouse_candidate(p1, _, p2, _).
+# make sure all pairs in coworker_candidate are considered as unsupervised examples
+coworker_label(p1,p2, 0, NULL) :- coworker_candidate(p1, _, p2, _).
+
 
 # distant supervision using data from DBpedia
-spouse_label(p1,p2, 1, "from_dbpedia") :-
-    spouse_candidate(p1, p1_name, p2, p2_name),
-    spouses_dbpedia(n1, n2),
+coworker_label(p1,p2, 1, "from_dbpedia") :-
+    coworker_candidate(p1, p1_name, p2, p2_name),
+    coworker_dbpedia(n1, n2),
     [ lower(n1) = lower(p1_name), lower(n2) = lower(p2_name) ;
       lower(n2) = lower(p1_name), lower(n1) = lower(p2_name) ].
+
 
 # supervision by heuristic rules in a UDF
 function supervise over (
@@ -193,15 +196,15 @@ function supervise over (
     ) returns (
         p1_id text, p2_id text, label int, rule_id text
     )
-    # implementation "udf/supervise_spouse.py" handles tsv lines.
+    # implementation "udf/supervise_coworker.py" handles tsv lines.
     implementation "udf/supervise_employment.py" handles tsv lines.
 
-spouse_label += supervise(
+coworker_label += supervise(
     p1_id, p1_begin, p1_end,
     p2_id, p2_begin, p2_end,
     doc_id, sentence_index, sentence_text,
     tokens, lemmas, pos_tags, ner_tags, dep_types, dep_token_indexes
-) :- spouse_candidate(p1_id, _, p2_id, _),
+) :- coworker_candidate(p1_id, _, p2_id, _),
     person_mention(p1_id, p1_text, doc_id, sentence_index, p1_begin, p1_end),
     person_mention(p2_id, p2_text,      _,              _, p2_begin, p2_end),
     sentences(
@@ -211,12 +214,12 @@ spouse_label += supervise(
 
 
 # resolve multiple labels by majority vote (summing the labels in {-1,0,1})
-spouse_label_resolved(p1_id, p2_id, SUM(vote)) :- spouse_label(p1_id, p2_id, vote, rule_id).
+coworker_label_resolved(p1_id, p2_id, SUM(vote)) :- coworker_label(p1_id, p2_id, vote, rule_id).
 
-# assign the resolved labels for the spouse relation
+# assign the resolved labels for the coworker relation
 work_for(p1_id, p2_id) = if l > 0 then TRUE
                       else if l < 0 then FALSE
-                      else NULL end :- spouse_label_resolved(p1_id, p2_id, l).
+                      else NULL end :- coworker_label_resolved(p1_id, p2_id, l).
 
 ###############################################################################
 
@@ -225,22 +228,22 @@ work_for(p1_id, p2_id) = if l > 0 then TRUE
 # Features
 @weight(f)
 work_for(p1_id, p2_id) :-
-    spouse_candidate(p1_id, _, p2_id, _),
-    spouse_feature(p1_id, p2_id, f).
+    coworker_candidate(p1_id, _, p2_id, _),
+    coworker_feature(p1_id, p2_id, f).
  
 # Inference rule: Symmetry
 @weight(3.0)
 work_for(p1_id, p2_id) => work_for(p2_id, p1_id) :-
-    spouse_candidate(p1_id, _, p2_id, _).
+    coworker_candidate(p1_id, _, p2_id, _).
 
 # Inference rule: Transitive
 @weight(1.0)
 work_for(p1_id, p2_id) => work_for(p2_id, p3_id) :-
-   spouse_candidate(p1_id, _, p2_id, _),
-   spouse_candidate(p1_id, _, p3_id, _).
+   coworker_candidate(p1_id, _, p2_id, _),
+   coworker_candidate(p1_id, _, p3_id, _).
 
 # Inference rule: Only one marriage
 # @weight(-1.0)
 # work_for(p1_id, p2_id) => work_for(p1_id, p3_id) :-
-#    spouse_candidate(p1_id, _, p2_id, _),
-#    spouse_candidate(p1_id, _, p3_id, _).
+#    coworker_candidate(p1_id, _, p2_id, _),
+#    coworker_candidate(p1_id, _, p3_id, _).

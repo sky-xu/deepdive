@@ -12,7 +12,7 @@ WorkLabel = namedtuple('WorkLabel', 'p1_id, p2_id, label, type')
         label   = "int",
         rule_id = "text",
     :[])
-# heuristic rules for finding positive/negative examples of spouse relationship mentions
+# heuristic rules for finding positive/negative examples of coworker relationship mentions
 def supervise(
         p1_id="text", p1_begin="int", p1_end="int",
         p2_id="text", p2_begin="int", p2_end="int",

@@ -9,7 +9,6 @@ bash <(curl -fsSL deepdive.stanford.edu/install)  postgres deepdive
 bash <(curl -fsSL deepdive.stanford.edu/install)  run_deepdive_tests
 
 # To set the location of this database, we need to configure a URL in the db.url file, e.g.:
-# echo "postgresql://$USER@$HOSTNAME:5432/deepdive_spouse_$USER" >db.url
 echo "postgresql://localhost/deepdive_employ_$USER" >db.url
 
 export PATH=~/local/bin:"$PATH"
@@ -40,25 +39,28 @@ deepdive query '
     ?- person_mention(p_id, name, doc, sentence, begin, end).
 '
 
-deepdive do spouse_candidate
+
+
+
+deepdive do coworker_candidate
 # to verify:
 deepdive query '
     name1, name2, doc, sentence | 20
-    ?- spouse_candidate(p1, name1, p2, name2),
+    ?- coworker_candidate(p1, name1, p2, name2),
        person_mention(p1, _, doc, sentence, _, _).
 '
 
-deepdive do spouse_feature
+deepdive do coworker_feature
 # to verify:
-deepdive query '| 20 ?- spouse_feature(_, _, feature).'
+deepdive query '| 20 ?- coworker_feature(_, _, feature).'
 
-deepdive do spouses_dbpedia
+deepdive do coworker_dbpedia
 # to verify:
-deepdive query '| 20 ?- spouses_dbpedia(name1, name2).'
+deepdive query '| 20 ?- coworker_dbpedia(name1, name2).'
 
 deepdive compile && deepdive do work_for
 # to verify:
-deepdive query 'rule, @order_by COUNT(1) ?- spouse_label(p1,p2, label, rule).'
+deepdive query 'rule, @order_by COUNT(1) ?- coworker_label(p1,p2, label, rule).'
 
 deepdive do probabilities
 # to verify:
